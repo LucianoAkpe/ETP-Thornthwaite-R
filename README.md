@@ -22,6 +22,6 @@ Le script principal (`main_etp_thornthwaite.R`) propose un menu interactif lors 
 ETP-Thornthwaite-R/
 ├── main_etp_thornthwaite.R   # Script R principal (interactif)
 ├── docs/
-│   └── Thornthwaite_1948_Climate_Classification.pdf  # Article original de 1948
+│   └── Thornthwaite_1948-An_Approach_toward_a_Rational_Classification_of_Climate.pdf  # Article original de 1948
 ├── .gitignore                # Exclusion des fichiers temporaires et Excel
 └── README.md                 # Documentation du projet
