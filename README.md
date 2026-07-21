@@ -64,7 +64,7 @@ $$ETP_{jour} = ETP_{mens} \times \left( \frac{P_j}{\sum P_j} \right)$$
 ETP-Thornthwaite-R/
 ├── main_etp_thornthwaite.R   # Script R principal (interactif)
 ├── data/
-│   └── Modèle_Thornthwaite.xlsx  # Fichier Excel modèle pour le formatage attendu
+│   └── Modèle_Calcul_ETP-Thornthwaite.xlsx  # Fichier Excel modèle pour le formatage attendu
 ├── docs/
 │   └── Thornthwaite_1948-An_Approach_toward_a_Rational_Classification_of_Climate.pdf  # Article original
 ├── .gitignore                # Exclusion des fichiers temporaires
