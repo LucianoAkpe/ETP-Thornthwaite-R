@@ -41,13 +41,8 @@
 #    L'ETP mensuelle est ensuite redistribuée sur chaque jour du mois 
 #    au pro-rata d'un poids journalier (P_j) combinant température et insolation.
 #    
-#    P_j = T_j * N_j   (avec T_j = 0 si température journalière < 0)
+#    P_j = T_j * N_j   (avec T_j = 0 si température moyenne journalière < 0)
 #    ETP_jour = ETP_mens * (P_j / Somme(P_j du mois))
-#
-# d) Avantage de l'adaptation
-#    Cette méthode conserve rigoureusement le volume évaporatoire mensuel 
-#    de Thornthwaite, tout en distribuant la demande évaporatoire selon 
-#    la variabilité journalière réelle de la température et de la photopériode.
 #
 # ---------------------------------------------------------------
 # 3️⃣ GESTION AUTOMATIQUE DE LA LATITUDE ET DE L’HÉMISPHÈRE
@@ -62,10 +57,6 @@
 # Saisissez TOUJOURS vos latitudes en valeurs absolues (positives), 
 # même pour les stations du Sud. C'est l'en-tête de la colonne qui 
 # indiquera au script d'appliquer le signe négatif en arrière-plan.
-#
-# ➕ Ce système permet de traiter en lot plusieurs stations issues
-# des deux hémisphères, dans un même fichier (sur plusieurs feuilles) 
-# ou dans un même répertoire.
 #
 # BIBLIOGRAPHIE : Thornthwaite, C.W. An approach toward a rational 
 # classification of climate. Geographical Review, 38(1), 55–94. 1948.
@@ -136,13 +127,7 @@ calcul_etp_thornthwaite <- function(df) {
 
 #==================== CALCUL ETP JOURNALIÈRE ====================
 calcul_etp_thornthwaite_journalier <- function(df) {
-  if (!all(c("AN", "MOIS", "JOUR", "T_jour") %in% names(df))) {
-    stop("⚠️ Colonnes attendues : AN, MOIS, JOUR, T_jour + latitude")
-  }
-  
   col_lat <- names(df)[grepl("Latitude_", names(df))]
-  if (length(col_lat) == 0) stop("⚠️ Pas de colonne de latitude trouvée.")
-  if (length(col_lat) > 1) stop("⚠️ Plusieurs colonnes latitude détectées.")
   
   df$Latitude_finale <- df[[col_lat]]
   if (grepl("Latitude_Sud", col_lat)) df$Latitude_finale <- -abs(df$Latitude_finale)
@@ -163,7 +148,7 @@ calcul_etp_thornthwaite_journalier <- function(df) {
   df_mois <- df %>%
     group_by(AN, MOIS, Latitude_finale) %>%
     summarise(
-      T_moy_mens = mean(T_jour, na.rm = TRUE),
+      T_moy_mens = mean(T_moy_jour, na.rm = TRUE),
       Nm = n(),
       Lm = mean(D_jour, na.rm = TRUE),
       .groups = "drop"
@@ -184,12 +169,12 @@ calcul_etp_thornthwaite_journalier <- function(df) {
   df <- df %>%
     group_by(AN, MOIS) %>%
     mutate(
-      poids = pmax(T_jour, 0) * D_jour,
+      poids = pmax(T_moy_jour, 0) * D_jour,
       ETP_jour = ETP_mens * (poids / sum(poids, na.rm = TRUE))
     ) %>%
     ungroup()
   
-  return(df %>% select(AN, MOIS, JOUR, Latitude_finale, T_jour, D_jour, ETP_jour))
+  return(df %>% select(AN, MOIS, JOUR, Latitude_finale, T_moy_jour, D_jour, ETP_jour))
 }
 
 #==================== CHOIX DU MODE ====================
@@ -216,12 +201,14 @@ fichier <- rstudioapi::selectFile(caption = "Sélectionnez un fichier Excel",
                                   existing = TRUE)
 
 if (is.null(fichier)) stop("Aucun fichier sélectionné.")
-fichiers <- c(fichier)   # vecteur pour garder la logique
+fichiers <- c(fichier)
 
 avertir_popup("OUVERTURE DE LA FENÊTRE DE SÉLECTION DU DOSSIER DE SAUVEGARDE")
 
 dossier_sortie <- rstudioapi::selectDirectory(caption = "Choisissez le dossier de sauvegarde")
 if (is.null(dossier_sortie)) stop("Aucun dossier de sortie choisi.")
+
+fichiers_traites_succes <- 0
 
 for (f in fichiers) {
   nom_base <- tools::file_path_sans_ext(basename(f))
@@ -233,13 +220,13 @@ for (f in fichiers) {
     
     if (mode_calcul == "mensuel") {
       if (!all(c("AN", "MOIS", "T_moy_mens") %in% names(df)) || !any(grepl("Latitude_", names(df)))) {
-        warning(paste("Feuille", feuille, "du fichier", f, "ignorée : colonnes manquantes."))
+        warning(paste("⚠️ Feuille", feuille, "du fichier", basename(f), "ignorée : colonnes manquantes (AN, MOIS, T_moy_mens ou Latitude_)."))
         next
       }
       res <- calcul_etp_thornthwaite(df)
     } else {
-      if (!all(c("AN", "MOIS", "JOUR", "T_jour") %in% names(df)) || !any(grepl("Latitude_", names(df)))) {
-        warning(paste("Feuille", feuille, "du fichier", f, "ignorée : colonnes manquantes."))
+      if (!all(c("AN", "MOIS", "JOUR", "T_moy_jour") %in% names(df)) || !any(grepl("Latitude_", names(df)))) {
+        warning(paste("⚠️ Feuille", feuille, "du fichier", basename(f), "ignorée : colonnes manquantes (AN, MOIS, JOUR, T_moy_jour ou Latitude_)."))
         next
       }
       res <- calcul_etp_thornthwaite_journalier(df)
@@ -252,7 +239,23 @@ for (f in fichiers) {
     fichier_sortie <- file.path(dossier_sortie, paste0("ETP_", nom_base, ".xlsx"))
     openxlsx::write.xlsx(resultats_par_feuille, fichier_sortie)
     cat("\u2705 Résultats sauvegardés dans:", fichier_sortie, "\n")
+    fichiers_traites_succes <- fichiers_traites_succes + 1
   }
 }
 
-cat("\n\u2728 Traitement terminé pour tous les fichiers.\n")
+#==================== MESSAGE DE FIN CONDITIONNEL ====================
+if (fichiers_traites_succes > 0) {
+  ruban_succes <- paste0(rep("🟩", 35), collapse = "")
+  cat("\n")
+  cat(ruban_succes, "\n")
+  cat(" ✨ OPÉRATION TERMINÉE ! ✨\n")
+  cat(" 📂 Tous vos fichiers ont été traités avec succès.\n")
+  cat(" 👉 Dossier de sauvegarde :", dossier_sortie, "\n")
+  cat(ruban_succes, "\n\n")
+} else {
+  if (mode_calcul == "mensuel") {
+    cat("\n❌ ERREUR : Aucun résultat généré. Assurez-vous d'utiliser Modèle_Thornthwaite_Mensuel.xlsx (AN, MOIS, T_moy_mens, Latitude_).\n")
+  } else {
+    cat("\n❌ ERREUR : Aucun résultat généré. Assurez-vous d'utiliser Modèle_Thornthwaite_Journalier.xlsx (AN, MOIS, JOUR, T_moy_jour, Latitude_).\n")
+  }
+}

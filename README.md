@@ -48,7 +48,7 @@ Pour obtenir une estimation journalière cohérente, la méthode a été adapté
 3. **Redistribution Journalière (`ETP_jour`) :** L'ETP mensuelle est ensuite redistribuée sur chaque jour du mois au pro-rata d'un poids journalier (`P_j`) combinant température et insolation :
 
 $$P_j = T_j \times N_j$$
-*(avec `T_j = 0` si la température journalière est `< 0`)*
+*(avec `T_j = 0` si la température moyenne journalière est `< 0`)*
 
 $$ETP_{jour} = ETP_{mens} \times \left( \frac{P_j}{\sum P_j} \right)$$
 
@@ -64,7 +64,8 @@ $$ETP_{jour} = ETP_{mens} \times \left( \frac{P_j}{\sum P_j} \right)$$
 ETP-Thornthwaite-R/
 ├── main_etp_thornthwaite.R   # Script R principal (interactif)
 ├── data/
-│   └── Modèle_Calcul_ETP-Thornthwaite.xlsx  # Fichier Excel modèle pour le formatage attendu
+│   ├── Modèle_Thornthwaite_Mensuel.xlsx     # Modèle pour les calculs mensuels
+│   └── Modèle_Thornthwaite_Journalier.xlsx  # Modèle pour les calculs journaliers
 ├── docs/
 │   └── Thornthwaite_1948-An_Approach_toward_a_Rational_Classification_of_Climate.pdf  # Article original
 ├── .gitignore                # Exclusion des fichiers temporaires
